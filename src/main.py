@@ -622,10 +622,249 @@ def drive_straight(direction=FORWARD, dist=1, units=TURNS):
     brain.screen.print("Rotation: {:.2f} degrees".format(rot))
 
     return
+################################################################
+# ------------------------------------------------------------
+# FRONT LEFT MOTOR
+# Port 1
+# ------------------------------------------------------------
+
+front_left = Motor(
+    Ports.PORT1,
+    GearSetting.RATIO_18_1,
+    False
+)
 
 
-<<<<<<< Updated upstream
-=======
+
+# ------------------------------------------------------------
+# FRONT RIGHT MOTOR
+# Port 2
+#
+# True means the motor direction is reversed in software.
+# ------------------------------------------------------------
+
+front_right = Motor(
+    Ports.PORT10,
+    GearSetting.RATIO_18_1,
+    True
+)
+
+
+
+# ------------------------------------------------------------
+# BACK RIGHT MOTOR
+# Port 3
+# ------------------------------------------------------------
+
+back_right = Motor(
+    Ports.PORT20,
+    GearSetting.RATIO_18_1,
+    True
+)
+
+
+
+# ------------------------------------------------------------
+# BACK LEFT MOTOR
+# Port 4
+# ------------------------------------------------------------
+
+back_left = Motor(
+    Ports.PORT11,
+    GearSetting.RATIO_18_1,
+    False
+)
+
+
+
+# ============================================================
+# 3. CREATE LEFT AND RIGHT DRIVE MOTOR GROUPS
+# ============================================================
+
+# LEFT SIDE:
+#
+# Port 1 = Front Left
+# Port 4 = Back Left
+
+left_drive = MotorGroup(
+    front_left,
+    back_left
+)
+
+
+# RIGHT SIDE:
+#
+# Port 2 = Front Right
+# Port 3 = Back Right
+
+right_drive = MotorGroup(
+    front_right,
+    back_right
+)
+
+
+
+# ============================================================
+# 4. DRIVE SETTINGS
+# ============================================================
+
+# When the joystick goes back to center,
+# BRAKE helps stop the robot instead of letting it coast.
+
+front_left.set_stopping(BRAKE)
+front_right.set_stopping(BRAKE)
+back_right.set_stopping(BRAKE)
+back_left.set_stopping(BRAKE)
+
+
+# Ignore tiny joystick movements.
+DEADZONE = 5
+
+
+
+# ============================================================
+# 5. LIMIT MOTOR SPEED
+# ============================================================
+
+def limit_speed(speed):
+
+    # Never command more than +100%.
+    if speed > 100:
+        return 100
+
+    # Never command less than -100%.
+    if speed < -100:
+        return -100
+
+    return speed
+
+
+
+# ============================================================
+# 6. STOP THE COMPLETE DRIVETRAIN
+# ============================================================
+
+def stop_drive():
+
+    left_drive.stop(BRAKE)
+
+    right_drive.stop(BRAKE)
+
+
+
+# ============================================================
+# 7. DRIVE ROBOT USING CONTROLLER
+# ============================================================
+
+def drive_robot():
+
+    # --------------------------------------------------------
+    # READ FORWARD / BACKWARD
+    # --------------------------------------------------------
+
+    # Axis 3 is the LEFT joystick.
+    #
+    # +100 = full forward
+    #    0 = centered
+    # -100 = full backward
+
+    forward = controller_1.axis3.position()
+
+
+
+    # --------------------------------------------------------
+    # READ LEFT / RIGHT TURN
+    # --------------------------------------------------------
+
+    # Axis 1 is the RIGHT joystick.
+    #
+    # Positive = right
+    # Negative = left
+
+    turn = controller_1.axis1.position()
+
+
+
+    # ========================================================
+    # ARCADE DRIVE CALCULATION
+    # ========================================================
+
+    # LEFT SIDE:
+    #
+    # Forward + Turn
+
+    left_speed = forward + turn
+
+
+    # RIGHT SIDE:
+    #
+    # Forward - Turn
+
+    right_speed = forward - turn
+
+
+
+    # ========================================================
+    # KEEP MOTOR COMMANDS BETWEEN -100% AND +100%
+    # ========================================================
+
+    left_speed = limit_speed(left_speed)
+
+    right_speed = limit_speed(right_speed)
+
+
+
+    # ========================================================
+    # APPLY DEADZONE
+    # ========================================================
+
+    # Prevent robot from slowly moving because of
+    # tiny joystick readings.
+
+    if abs(left_speed) < DEADZONE:
+        left_speed = 0
+
+
+    if abs(right_speed) < DEADZONE:
+        right_speed = 0
+
+
+
+    # ========================================================
+    # SEND SPEED TO LEFT SIDE
+    # ========================================================
+
+    # Controls:
+    #
+    # Port 1 = Front Left
+    # Port 4 = Back Left
+
+    left_drive.spin(
+        FORWARD,
+        left_speed,
+        PERCENT
+    )
+
+
+
+    # ========================================================
+    # SEND SPEED TO RIGHT SIDE
+    # ========================================================
+
+    # Controls:
+    #
+    # Port 2 = Front Right
+    # Port 3 = Back Right
+
+    right_drive.spin(
+        FORWARD,
+        right_speed,
+        PERCENT
+    )
+
+
+
+
 def measure_motor_attributes(duration_ms=500000, sample_period_ms=100):
     """
     Run all four drive motors briefly and log their raw operating data to an
@@ -707,21 +946,18 @@ def measure_motor_attributes(duration_ms=500000, sample_period_ms=100):
     return file_name
 
     
->>>>>>> Stashed changes
 
 initialize()
 callibrate_sensors()
 run_date_screen_temporarily()
 wait_for_calibration()
 
-<<<<<<< Updated upstream
-#lift_weight()
-# date_screen_temporarily() hold all the other defs, so when it timed runs, all defs run together
-drive_straight(FORWARD, 1, TURNS)
-=======
-
-lift_weight()
+drive_straight(FORWARD, 10, TURNS)
+while true:
+    drive_robot()
+    lift_weight()
+    wait(20, MSEC)  # Small delay to prevent CPU overload
+    
 # date_screen_temporarily() hold all the other defs, so when it timed runs, all defs run together
 #drive_straight(FORWARD, 1, TURNS)
 #measure_motor_attributes()
->>>>>>> Stashed changes
