@@ -50,7 +50,7 @@ row_position = controller_1.screen.row()
 file_name = "default.csv" #
 
 screen_lock = False #custom mutex api
-
+inertial_1 = Inertial(Ports.PORT17)
 
 def run_date_screen_temporarily():
     """Intializes the screen and 
@@ -414,28 +414,41 @@ def sd_card ():
 
 def lift_weight():
     global file_name
-    arm_motor = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
-    arm_motor.set_stopping(BrakeType.HOLD)
-    arm_motor.set_velocity(50, PERCENT)
+    arm_motor_l = Motor(Ports.PORT5, GearSetting.RATIO_36_1, False)
+    arm_motor_l.set_stopping(BrakeType.HOLD)
+    arm_motor_l.set_velocity(50, PERCENT)
+
+    arm_motor_r=Motor(Ports.PORT15, GearSetting.RATIO_36_1, False)
+    arm_motor_r.set_stopping(BrakeType.HOLD)
+    arm_motor_r.set_velocity(50, PERCENT)
 
     while True:
         if controller_1.buttonUp.pressing():
-            arm_motor.spin(DirectionType.FORWARD)
+            arm_motor_l.spin(DirectionType.FORWARD)
+            arm_motor_r.spin(DirectionType.REVERSE)
 
         elif controller_1.buttonDown.pressing():
-            arm_motor.spin(DirectionType.REVERSE)
+            arm_motor_l.spin(DirectionType.REVERSE)
+            arm_motor_r.spin(DirectionType.FORWARD)
                     
         else:
-            arm_motor.stop()
+            arm_motor_l.stop()
+            arm_motor_r.stop()
 
     
         #capture essential motor attributes
         t_stamp = brain.timer.value()
-        pos = arm_motor.position(DEGREES)
-        vel = arm_motor.velocity(RPM)
-        torque = arm_motor.torque(TorqueUnits.NM)
-        power = arm_motor.power(PowerUnits.WATT) 
-        current = arm_motor.current(CurrentUnits.AMP)
+        pos = arm_motor_l.position(DEGREES)
+        vel = arm_motor_l.velocity(RPM)
+        torque = arm_motor_l.torque(TorqueUnits.NM)
+        power = arm_motor_l.power(PowerUnits.WATT) 
+        current = arm_motor_l.current(CurrentUnits.AMP)
+
+        pos_r = arm_motor_r.position(DEGREES)
+        vel_r = arm_motor_r.velocity(RPM)
+        torque_r = arm_motor_r.torque(TorqueUnits.NM)
+        power_r = arm_motor_r.power(PowerUnits.WATT)
+        current_r = arm_motor_r.current(CurrentUnits.AMP)
 
         # Format log entry
         log_entry = "{:.3f}".format(t_stamp) +"," +\
@@ -443,7 +456,12 @@ def lift_weight():
                                 "{:.2f}".format(vel) +"," +\
                                 "{:.3f}".format(torque) +"," +\
                                 "{:.3f}".format(power)+"," +\
-                                "{:.3f}".format(current)+"\n"
+                                "{:.3f}".format(current)+","+\
+                                "{:.2f}".format(pos_r) +"," +\
+                                "{:.2f}".format(vel_r) +"," +\
+                                "{:.3f}".format(torque_r) +"," +\
+                                "{:.3f}".format(power_r)+"," +\
+                                "{:.3f}".format(current_r)+"\n"
 
 
         #print(log_entry)
@@ -462,11 +480,6 @@ def lift_weight():
 
 
 
-
-initialize()
-run_date_screen_temporarily()
-lift_weight()
-# date_screen_temporarily() hold all the other defs, so when it timed runs, all defs run together
 
 
 
@@ -544,3 +557,171 @@ def sd_card ():
 
 
 ## ------------------------------------------------------------------------------------------------------ ##
+
+
+def Move_Forward():
+    global file_name
+    front_right = Motor(Ports.PORT10, GearSetting.RATIO_18_1, False)
+    back_left = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
+
+    front_right.set_stopping(BrakeType.HOLD)
+    back_left.set_stopping(BrakeType.HOLD)
+    front_right.set_velocity(50, PERCENT)
+    back_left.set_velocity(50, PERCENT)
+
+    while True:
+        if controller_1.buttonUp.pressing():
+            front_right.spin(DirectionType.FORWARD)
+            back_left.spin(DirectionType.FORWARD)
+        elif controller_1.buttonDown.pressing():
+            front_right.spin(DirectionType.REVERSE)
+            back_left.spin(DirectionType.REVERSE)
+        else:
+            front_right.stop()
+            back_left.stop()
+            break
+
+def callibrate_sensors():
+    global inertial_1
+    inertial_1 = Inertial(Ports.PORT17)
+
+    if inertial_1.installed():
+        print("Inertial sensor is installed.")
+        # Start calibration.
+        inertial_1.calibrate()
+    else:
+        print("Inertial sensor is not installed.")
+
+def wait_for_calibration():
+        global inertial_1
+        while inertial_1.is_calibrating():
+            print("Calibrating...")
+            wait(100, MSEC)
+        print("Calibration complete.")
+        brain.screen.print("Calibration complete.")
+
+def drive_straight(direction=FORWARD, dist=1, units=TURNS):
+    rot=inertial_1.rotation()
+    FRONT_RIGHT = Motor(Ports.PORT10, GearSetting.RATIO_18_1, False)
+    FRONT_LEFT = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
+    BACK_LEFT = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
+    BACK_RIGHT = Motor(Ports.PORT20, GearSetting.RATIO_18_1, False)
+    FRONT_RIGHT.spin_for(direction, dist, TURNS, wait=False)
+    BACK_RIGHT.spin_for(direction, dist, TURNS, wait=False)
+
+    if direction == FORWARD:
+        direction = REVERSE
+    else:
+        direction = FORWARD
+
+    FRONT_LEFT.spin_for(direction, dist, TURNS, wait=False)
+    BACK_LEFT.spin_for(direction, dist, TURNS, wait=True)    
+    wait(1000, MSEC)
+    rot=inertial_1.rotation()
+
+    brain.screen.print("Rotation: {:.2f} degrees".format(rot))
+
+    return
+
+
+<<<<<<< Updated upstream
+=======
+def measure_motor_attributes(duration_ms=500000, sample_period_ms=100):
+    """
+    Run all four drive motors briefly and log their raw operating data to an
+    SD card CSV file. This helps understand each motor's behavior and the load
+    being applied during motion.
+    """
+    global file_name
+
+    if not brain.sdcard.is_inserted():
+        brain.screen.print("Insert SD card")
+        return
+
+    # Use the same four drive motors in the robot chassis.
+    motors = {
+        "FR": Motor(Ports.PORT11, GearSetting.RATIO_18_1, False),
+        "FL": Motor(Ports.PORT20, GearSetting.RATIO_18_1, False),
+        "BL": Motor(Ports.PORT10, GearSetting.RATIO_18_1, False),
+        "BR": Motor(Ports.PORT1, GearSetting.RATIO_18_1, False),
+    }
+
+    for motor in motors.values():
+        motor.set_stopping(BrakeType.HOLD)
+        motor.set_velocity(35, PERCENT)
+
+    # Left-side motors are mounted opposite the right-side motors, so their
+    # direction must be inverted to represent the same logical forward drive.
+    left_motors = [motors["FL"], motors["BL"]]
+    right_motors = [motors["FR"], motors["BR"]]
+
+    for motor in left_motors:
+        motor.spin(DirectionType.REVERSE)
+    for motor in right_motors:
+        motor.spin(DirectionType.FORWARD)
+
+    # timestamp = "motor_attributes_" + "{:02d}".format(cur_date[0]) + "-" + \
+    #     "{:02d}".format(cur_date[1]) + "-" + \
+    #     "{:02d}".format(cur_date[2]) + "-" + \
+    #     "{:02d}".format(cur_date[3]) + "-" + \
+    #     "{:02d}".format(cur_date[4]) + ".csv"
+
+    with open(file_name, "w") as log_file:
+        log_file.write(
+            "time_ms,"
+            "FR_position_deg,FR_velocity_rpm,FR_torque_nm,FR_power_w,FR_current_a,"
+            "FL_position_deg,FL_velocity_rpm,FL_torque_nm,FL_power_w,FL_current_a,"
+            "BL_position_deg,BL_velocity_rpm,BL_torque_nm,BL_power_w,BL_current_a,"
+            "BR_position_deg,BR_velocity_rpm,BR_torque_nm,BR_power_w,BR_current_a\n"
+        )
+
+    start_time = brain.timer.time(MSEC)
+
+    while brain.timer.time(MSEC) - start_time < duration_ms:
+        elapsed = brain.timer.time(MSEC) - start_time
+        data_row = [str(elapsed)]
+
+        for name, motor in motors.items():
+            pos = motor.position(DEGREES)
+            vel = motor.velocity(RPM)
+            torque = motor.torque(TorqueUnits.NM)
+            power = motor.power(PowerUnits.WATT)
+            current = motor.current(CurrentUnits.AMP)
+            data_row.extend([
+                str(pos),
+                str(vel),
+                str(torque),
+                str(power),
+                str(current),
+            ])
+
+        with open(file_name, "a") as log_file:
+            log_file.write(",".join(data_row) + "\n")
+
+        wait(sample_period_ms, MSEC)
+
+    for motor in motors.values():
+        motor.stop()
+
+    brain.screen.print("Saved: " + file_name)
+    return file_name
+
+    
+>>>>>>> Stashed changes
+
+initialize()
+callibrate_sensors()
+run_date_screen_temporarily()
+wait_for_calibration()
+
+<<<<<<< Updated upstream
+#lift_weight()
+# date_screen_temporarily() hold all the other defs, so when it timed runs, all defs run together
+drive_straight(FORWARD, 1, TURNS)
+=======
+
+lift_weight()
+# date_screen_temporarily() hold all the other defs, so when it timed runs, all defs run together
+#drive_straight(FORWARD, 1, TURNS)
+#measure_motor_attributes()
+>>>>>>> Stashed changes
